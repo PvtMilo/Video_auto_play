@@ -1,2 +1,4 @@
-tkinter     # For the graphical user interface
-watchdog    # For monitoring the folder for file changes
+tkinter     #remove if necessary
+
+watchdog    
+Pillow
