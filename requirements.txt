@@ -1,0 +1,2 @@
+tkinter     # For the graphical user interface
+watchdog    # For monitoring the folder for file changes
