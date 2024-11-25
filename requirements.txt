@@ -1,4 +1,3 @@
 tkinter     #remove if necessary
-
 watchdog    
 Pillow
