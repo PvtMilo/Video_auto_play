@@ -1,0 +1,27 @@
+LICENSE AGREEMENT
+Software Name: Wolfie_AV_Player
+Author: Samuel Ilham
+
+This License Agreement governs the use of the software named above (hereinafter referred to as "Software"). By using, downloading, or installing this Software, you agree to comply with the following terms and conditions:
+
+1. Ownership
+This Software and its code are the exclusive intellectual property of Samuel Ilham. All rights, title, and interest in and to the Software remain with the author.
+
+2. Usage
+You are granted a personal, non-exclusive, non-transferable, and revocable license to use this Software for its intended purposes.
+
+Modifications or enhancements to the Software are prohibited without prior written consent from the author.
+3. Prohibited Actions
+Without prior approval from the author, you may NOT:
+
+Copy, reproduce, or distribute the Software or its source code.
+Share, resell, or redistribute this Software to any third party.
+Decompile, reverse-engineer, or otherwise attempt to derive the source code from the Software.
+4. Approval Requirement
+All instances of distribution, modification, or use beyond personal purposes require the prior written approval of Samuel Ilham. Contact the author at flip360.id.solo@gmail.com to request permission.
+
+5. Liability
+This Software is provided "AS IS" without warranty of any kind. The author is not liable for any damage or loss resulting from the use of this Software.
+
+6. Termination
+Violation of this License Agreement will result in the immediate termination of your rights to use this Software.
