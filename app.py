@@ -9,6 +9,7 @@ from watchdog.events import FileSystemEventHandler
 import subprocess
 from datetime import datetime
 from PIL import Image, ImageTk
+import threading
 
 CONFIG_FILE = "video_player_config.json"
 custom_title = "Wolfie_AV_Player"
@@ -18,7 +19,7 @@ def create_ico_from_png(png_path, ico_path):
     try:
         img = Image.open(png_path)
         icon_sizes = [(16,16), (32, 32), (48,48), (64,64)]
-        img.save(ico_path, sizes=icon_sizes)
+        img.save(ico_path, format='ICO', sizes=icon_sizes)
         return True
     except Exception as e:
         print(f"Failed to convert PNG to ICO: {e}")
@@ -40,9 +41,10 @@ class VideoHandler(FileSystemEventHandler):
         self.delay = delay
         self.callback = callback
         self.is_paused = False
+        self.is_running = True
 
     def on_created(self, event):
-        if not self.is_paused and not event.is_directory and event.src_path.lower().endswith(('.mp4', '.avi', '.mkv')):
+        if not self.is_paused and not event.is_directory and self.is_running and event.src_path.lower().endswith(('.mp4', '.avi', '.mkv')):
             video_name = os.path.basename(event.src_path)
             detection_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             self.callback(f"{detection_time} - {video_name}")
@@ -59,9 +61,15 @@ class VideoHandler(FileSystemEventHandler):
             else:
                 subprocess.call(('xdg-open', video_path))
 
+    def stop(self):
+        self.is_running = False
+
 class Application(tk.Tk):
     def __init__(self):
         super().__init__()
+        
+        # Prevent multiple instances
+        self.instance_check()
         
         # Set custom icon
         self.set_app_icon()
@@ -94,6 +102,10 @@ class Application(tk.Tk):
         self.delay = 5
         self.video_count = 0
         self.is_watching = True
+        
+        # Observer management
+        self.observer = None
+        self.event_handler = None
 
         # Configure the style
         self.style = ttk.Style()
@@ -111,6 +123,20 @@ class Application(tk.Tk):
         
         self.create_widgets()
         self.start_watching()
+        
+        # Ensure proper cleanup on exit
+        self.protocol("WM_DELETE_WINDOW", self.safe_exit)
+
+    def instance_check(self):
+        """Prevent multiple instances of the application"""
+        try:
+            import socket
+            self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self.socket.bind(('localhost', 0))
+            self.socket.listen(1)
+        except Exception:
+            messagebox.showerror("Error", "Another instance of the application is already running.")
+            sys.exit(1)
 
     def set_app_icon(self):
         try:
@@ -273,18 +299,73 @@ class Application(tk.Tk):
             messagebox.showerror("Error", f"Invalid delay value: {str(e)}")
 
     def start_watching(self):
-        self.event_handler = VideoHandler(self.delay, self.add_video_to_list)
-        self.observer = Observer()
-        self.observer.schedule(self.event_handler, self.hot_folder, recursive=False)
-        self.observer.start()
+        """Start the file watching process with improved error handling"""
+        try:
+            # Stop any existing observer
+            if self.observer:
+                self.stop_watching()
+            
+            self.event_handler = VideoHandler(self.delay, self.add_video_to_list)
+            self.observer = Observer()
+            self.observer.schedule(self.event_handler, self.hot_folder, recursive=False)
+            
+            # Use a daemon thread for the observer to ensure it can be stopped
+            observer_thread = threading.Thread(target=self.observer.start, daemon=True)
+            observer_thread.start()
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to start watching folder: {str(e)}")
 
-    def on_closing(self):
-        self.observer.stop()
-        self.observer.join()
-        save_config({"hot_folder": self.hot_folder})
-        self.destroy()
+    def stop_watching(self):
+        """Safely stop the file watching process"""
+        try:
+            if self.observer:
+                self.event_handler.stop()
+                self.observer.stop()
+                self.observer.join(timeout=5)  # Wait for observer to stop
+                self.observer = None
+                self.event_handler = None
+        except Exception as e:
+            print(f"Error stopping observer: {e}")
+
+    def safe_exit(self):
+        """Safely exit the application"""
+        try:
+            # Stop watching
+            self.stop_watching()
+            
+            # Save configuration
+            save_config({"hot_folder": self.hot_folder})
+            
+            # Close the socket to release the instance lock
+            if hasattr(self, 'socket'):
+                self.socket.close()
+            
+            # Destroy the window
+            self.destroy()
+            
+            # Exit the application
+            sys.exit(0)
+        except Exception as e:
+            print(f"Error during exit: {e}")
+            sys.exit(1)
+
+def handle_exception(exc_type, exc_value, exc_traceback):
+    """Global exception handler to log unexpected errors"""
+    import traceback
+    # Log the error
+    print("Uncaught exception:", exc_type.__name__, exc_value)
+    traceback.print_exception(exc_type, exc_value, exc_traceback)
+    
+    # Prevent the default error dialog
+    sys.exit(1)
+
+# Set the global exception handler
+sys.excepthook = handle_exception
 
 if __name__ == "__main__":
-    app = Application()
-    app.protocol("WM_DELETE_WINDOW", app.on_closing)
-    app.mainloop()
+    try:
+        app = Application()
+        app.mainloop()
+    except Exception as e:
+        print(f"Fatal error: {e}")
+        sys.exit(1)
